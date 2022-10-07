@@ -8,27 +8,22 @@ import copy
 from nltk.corpus import brown
 import re
 
-def compute_emission(tags, words, tag_words):
+def compute_emission(tags, words, tag_words, vocab):
   emission = defaultdict()
   for tag in tags.keys():
       for word in words.keys():  
           if tag not in emission:
               emission[tag] = defaultdict()
           count = 0
-          if word in tag_words[tag]: count = tag_words[tag][word]
-          else: count=0.00000001
-          emission[tag][word] = count/tags[tag]
+          if word in tag_words[tag]: emission[tag][word] = (tag_words[tag][word] + 1)/(tags[tag] + len(vocab.keys()))
+          else: emission[tag][word] = 1/(tags[tag] + len(vocab.keys()))
+          
   return emission
 
 def compute_transition(tags, train_sent):
   sents = []
   for lis in train_sent:
     sents.append(lis)
-  count = 0
-  for sent in sents:
-    if count > 10: break
-    if len(sent) == 5: 
-        count += 1
   
   bigram = defaultdict()
   for sent in sents:
@@ -54,10 +49,8 @@ def compute_transition(tags, train_sent):
             transition[tag] = defaultdict()
         if tag+'-'+tag1 in bigram:
           transition[tag][tag1] = (bigram[tag+'-'+tag1]+1)/(tags[tag]+len(tags))
-          #transition[tag][tag1] = (bigram[tag+'-'+tag1]+1)/(tags[tag]+len(tags))
         else:
-          transition[tag][tag1] = 1/(tags[tag]+len(tags));
-          #transition[tag][tag1] = 0.0001;
+          transition[tag][tag1] = 1/(tags[tag]+len(tags))
   
   transition["^"] = defaultdict()
   for tag in tags.keys():
@@ -65,7 +58,7 @@ def compute_transition(tags, train_sent):
   
   return transition
 
-def compute_param(train_word, train_sent):
+def compute_param(train_word, train_sent, vocab):
   tags = defaultdict()
   words = defaultdict()
   tag_words = defaultdict()
@@ -86,7 +79,7 @@ def compute_param(train_word, train_sent):
           tag_words[tag] = defaultdict()
           tag_words[tag][word] = 1
   
-  emission = compute_emission(tags, words, tag_words)
+  emission = compute_emission(tags, words, tag_words, vocab)
   transition = compute_transition(tags, train_sent)
   
   parameters = {"emission": emission, "transition": transition, "tags": tags};

@@ -22,19 +22,18 @@ class TreeNode:
 
 class Viterbi:
     
-    def unknown(self, word, model):
+    def unknown(self, word, vocab, model):
         try:
             vector = model.wv[word]
             max_cosine = 0
-            for i in train_set:
-                for j in i:
-                    vec_i = model.wv[j]
-                    cosine = np.dot(vector,vec_i)/(norm(vector)*norm(vec_i))
-                    if(cosine > max_cosine):
-                        max_cosine = cosine
-                        sim_word = j
+            for i in vocab.keys():
+                vec_i = model.wv[i]
+                cosine = np.dot(vector,vec_i)/(norm(vector)*norm(vec_i))
+                if(cosine > max_cosine):
+                    max_cosine = cosine
+                    sim_word = i
             return sim_word
-        except:
+        except KeyError as e:
             # word not present in word2vec vocab
             return None
 
@@ -50,7 +49,7 @@ class Viterbi:
 
         return tags
 
-    def compute_states(self, sent, parameters, model):
+    def compute_states(self, sent, parameters, model, use_embedding):
         sent = sent.strip()
         tokens = sent.split(' ')
 
@@ -66,17 +65,22 @@ class Viterbi:
         temp_best = defaultdict()
         for i,token in enumerate(tokens):
             temp_best = defaultdict()
+            cnt = True
+            new = None
             for tag,tag_node in imp_nodes.items():
-              # compute every tag for this node
+                # compute every tag for this node
                 if i == len(tokens)-1:
                     if token in parameters["vocab"]:
-                          emission = parameters["emission"][tag][token]
-                    else:
-                        new = self.unknown(token, model)
+                        emission = parameters["emission"][tag][token]
+                    elif use_embedding:
+                        #if cnt: print("Using word embedding method for Unknown word: {}".format(token))
+                        if cnt: new = self.unknown(token, parameters["vocab"], model)
+                        cnt = False
                         if(new != None):
                             emission = parameters["emission"][tag][new]
                         else:
-                             emission = 0.001
+                            emission = 0.001
+                    else: emission = 0.001
                     transition = parameters["transition"][tag]["."]
                     new_prob = tag_node.prob*emission*transition
                     child = TreeNode(".", new_prob, tag_node)
@@ -85,12 +89,15 @@ class Viterbi:
                     for child_tag in parameters["tags"].keys():
                         if token in parameters["vocab"]:
                             emission = parameters["emission"][tag][token]
-                        else:
-                            new = self.unknown(token, model)
+                        elif use_embedding:
+                            #if cnt: print("Using word embedding method for Unknown word: {}".format(token))
+                            if cnt: new = self.unknown(token, parameters["vocab"], model)
+                            cnt = False
                             if(new != None):
                                 emission = parameters["emission"][tag][new]
                             else:
                                 emission = 0.001
+                        else: emission = 0.001
                         transition = parameters["transition"][tag][child_tag]
                         new_prob = tag_node.prob*emission*transition
                         child = TreeNode(child_tag, new_prob, tag_node)

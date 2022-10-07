@@ -13,11 +13,11 @@ import pickle
 from gensim.models import Word2Vec
 import gensim
 
-def test_data(input, parameters, model):
+def test_data(input, parameters, model, use_embedding):
     obj = Viterbi()
     
     sent = " ".join(input.split())
-    states = obj.compute_states(sent, parameters, model)
+    states = obj.compute_states(sent, parameters, model, use_embedding)
     print("States corresponding to input are: ", sent, states)
 
 def main():
@@ -25,6 +25,8 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-i", "--Input", help = "Provide Input")
+    parser.add_argument("-w", "--Embedding", help = "Provide Input")
+
     args = parser.parse_args()
 
     # load parameters
@@ -36,7 +38,7 @@ def main():
     if args.Input == None:
         print("Please provide input")
     else:
-        test_data(args.Input, parameters, model)
+        test_data(args.Input, parameters, model, args.Embedding == "True")
     
 
 if __name__ == "__main__":

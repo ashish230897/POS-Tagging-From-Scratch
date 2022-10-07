@@ -8,6 +8,8 @@ from nltk.corpus import brown
 import re
 from compute_params import *
 from viterbi_algo import *
+import seaborn as sns
+import argparse
 
 nltk.download('brown')
 nltk.download('universal_tagset')
@@ -33,9 +35,9 @@ def compute_per_tag_acc():
         
     for fold in acc_per_fold:
         for tag in acc_per_fold[fold]:
-            pre = acc_per_fold[fold][tag]['TP']/(acc_per_fold[0][tag]['TP']+acc_per_fold[0][tag]['FP'])
+            pre = acc_per_fold[fold][tag]['TP']/(acc_per_fold[fold][tag]['TP'] + acc_per_fold[fold][tag]['FP'])
             pre_per_tag[tag] += pre
-            rec = acc_per_fold[fold][tag]['TP']/(acc_per_fold[0][tag]['TP']+acc_per_fold[0][tag]['FN'])
+            rec = acc_per_fold[fold][tag]['TP']/(acc_per_fold[fold][tag]['TP'] + acc_per_fold[fold][tag]['FN'])
             rec_per_tag[tag] += rec 
             f1_per_tag[tag] += round((2*pre*rec/(pre+rec)),2)
             
@@ -49,16 +51,16 @@ def compute_per_tag_acc():
     print("Per tag recall is:", rec_per_tag)
 
 
-def acc(prediction,true_label,accuracy):  
+def acc(prediction,true_label,accuracy):
   
   for i in range(0,len(true_label)):
     confusion_matrix[true_label[i]][prediction[i]] += 1
     
-    if(prediction[i]==true_label[i]):
-      accuracy[prediction[i]]['TP']+=1
+    if(prediction[i] == true_label[i]):
+      accuracy[prediction[i]]['TP'] += 1
     else:
-      accuracy[prediction[i]]['FP']+=1
-      accuracy[true_label[i]]['FN']+=1
+      accuracy[prediction[i]]['FP'] += 1
+      accuracy[true_label[i]]['FN'] += 1
 
 def test_data(i):
     test = split_arr[i]
@@ -87,17 +89,16 @@ def init_cnf_matrix(parameters):
         confusion_matrix['^'][key] = 0
     confusion_matrix['^']['^'] = 0
 
-def test_acc(X_test,Y_test,parameters):
-    
+def test_acc(X_test, Y_test, parameters, model, use_embedding):
     obj = Viterbi()
     size = len(X_test)
     
     for i in range(0,size):
         sent = " ".join(X_test[i].split())
         if(len(sent) > 0):
-            states = obj.compute_states(sent, parameters)
+            states = obj.compute_states(sent, parameters, model, use_embedding)
+            # this function updates both accuracy and confusion_matrix dictionaries
             acc(states,Y_test[i],accuracy)
-    return (accuracy)
 
 def acc_per_tag(confusion_matrix):
     accuracy_per_tag = {}
@@ -118,30 +119,35 @@ def init_acc(parameters):
     accuracy['^']['FP'] = 0
     accuracy['^']['FN'] = 0
 
-def train_and_test(i):
+def train_and_test(i, model, use_embedding):
     train_sent = []
     train_words = []
+    vocab = {}
     for j in range(0,5):
         if(j!=i):
             train_sent += list(split_arr[j])
-            vocab = {}
+            
             for sent in train_sent:
               for tup in sent:
                 train_words.append(tup)
                 if tup[0] in vocab: vocab[tup[0]] += 1
                 else: vocab[tup[0]] = 1
     
-    parameters = compute_param(train_words,train_sent)
+    parameters = compute_param(train_words,train_sent, vocab)
     parameters['vocab'] = vocab
     
+    # confusion matrix of tags
     init_cnf_matrix(parameters)
+
+    # initialising(zero out) the accuracy metrics of every tag for every fold
     init_acc(parameters)
     
     # preparing test data
     X_test,Y_test = test_data(i)
     
-    acc_per_fold[i] = {}
-    acc_per_fold[i] = test_acc(X_test,Y_test,parameters)
+    acc_per_fold[i] = {}  # acc_per_fold defined globally
+    test_acc(X_test, Y_test, parameters, model, use_embedding)
+    acc_per_fold[i] = accuracy
     
     print(acc_per_tag(confusion_matrix) , i+1)
 
@@ -158,8 +164,6 @@ def create_heatmap():
             lis.append(confusion_matrix[key][key_])
         arr.append(lis)
     arr = np.array(arr)
-
-    import seaborn as sns
 
     fig, ax = plt.subplots(figsize=(15,15))         # Sample figsize in inches
     plot = sns.heatmap(arr, annot=True, linewidths=.5, ax=ax, xticklabels=keys, yticklabels=keys, fmt='g')
@@ -197,9 +201,19 @@ def compute_overall_acc():
     print("F 0.5 score is" , F_05)
 
 def main():
+    # collect the input sentence
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-w", "--Embedding", help = "Provide Input")
+
+    args = parser.parse_args()
+
+    if args.Embedding == "True":
+        print("loading word embedding model")
+        model = gensim.models.Word2Vec.load('big.embedding')
+    else: model = None
 
     for i in range(0,5):
-        train_and_test(i)
+        train_and_test(i, model, args.Embedding == "True")
 
     # save confusion matrix heatmap for last fold
     create_heatmap()

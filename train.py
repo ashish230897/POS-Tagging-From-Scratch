@@ -28,7 +28,7 @@ def train_model():
             if tup[0] in vocab: vocab[tup[0]] += 1
             else: vocab[tup[0]] = 1
     
-    parameters = compute_param(train_words,train_sent)
+    parameters = compute_param(train_words, train_sent, vocab)
     parameters['vocab'] = vocab
     
     with open('parameters.pkl', 'wb') as f:
@@ -55,6 +55,8 @@ def train_model():
     book17 = nltk.corpus.gutenberg.sents('shakespeare-macbeth.txt')
     book18 = nltk.corpus.gutenberg.sents('whitman-leaves.txt')
     big_vocab = book1 + book2 + book3 + book4 + book5 + book6 + book7 + book8 + book9 + book10 + book11 + book12 + book13 + book14 + book15 + book16 + train_set 
+    
+    print("Training word2vec model")
     model = gensim.models.Word2Vec(big_vocab, min_count=1)
     model.save('big.embedding')
 
