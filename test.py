@@ -10,12 +10,14 @@ from compute_params import *
 from viterbi_algo import *
 import argparse
 import pickle
+from gensim.models import Word2Vec
+import gensim
 
-def test_data(input, parameters):
+def test_data(input, parameters, model):
     obj = Viterbi()
     
     sent = " ".join(input.split())
-    states = obj.compute_states(sent, parameters)
+    states = obj.compute_states(sent, parameters, model)
     print("States corresponding to input are: ", sent, states)
 
 def main():
@@ -28,11 +30,13 @@ def main():
     # load parameters
     with open('parameters.pkl', 'rb') as f:
         parameters = pickle.load(f)
+    
+    model = gensim.models.Word2Vec.load('big.embedding')
 
     if args.Input == None:
         print("Please provide input")
     else:
-        test_data(args.Input, parameters)
+        test_data(args.Input, parameters, model)
     
 
 if __name__ == "__main__":
