@@ -63,7 +63,6 @@ class Viterbi:
             root.tags.append(node)
             imp_nodes[tag] = node
 
-
         temp_best = defaultdict()
         for i,token in enumerate(tokens):
             temp_best = defaultdict()
@@ -77,7 +76,7 @@ class Viterbi:
                         if(new != None):
                             emission = parameters["emission"][tag][new]
                         else:
-                             emission = 0.000001
+                             emission = 0.001
                     transition = parameters["transition"][tag]["."]
                     new_prob = tag_node.prob*emission*transition
                     child = TreeNode(".", new_prob, tag_node)
@@ -91,7 +90,7 @@ class Viterbi:
                             if(new != None):
                                 emission = parameters["emission"][tag][new]
                             else:
-                                emission = 0.000001
+                                emission = 0.001
                         transition = parameters["transition"][tag][child_tag]
                         new_prob = tag_node.prob*emission*transition
                         child = TreeNode(child_tag, new_prob, tag_node)
