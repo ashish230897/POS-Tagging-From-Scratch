@@ -55,7 +55,6 @@ def compute_per_tag_acc():
 
 
 def acc(prediction, true_label):
-  
   for i in range(0,len(true_label)):
     confusion_matrix[true_label[i]][prediction[i]] += 1
     
@@ -82,6 +81,7 @@ def test_data(i):
     return (X_test,Y_test)
 
 def init_cnf_matrix(parameters):
+    global confusion_matrix
     confusion_matrix = {}
     for key_1 in parameters['tags'].keys():
         confusion_matrix[key_1] = {}
@@ -100,7 +100,7 @@ def test_acc(X_test, Y_test, parameters, model, use_embedding):
     print("Fold size is {}".format(size))
 
     t1 = 0
-    for i in range(0,40):
+    for i in range(0,size):
         sent = " ".join(X_test[i].split())
         if(len(sent) > 0):
             if i != 0 and i % 1000 == 0:
@@ -120,6 +120,7 @@ def acc_per_tag(confusion_matrix):
     return (accuracy_per_tag)
 
 def init_acc(parameters):
+    global accuracy
     accuracy = {}
     for key in parameters['tags']:
         accuracy[key] = {}
@@ -167,7 +168,7 @@ def train_and_test(i, use_embedding):
     
     acc_per_fold[i] = {}  # acc_per_fold defined globally
     test_acc(X_test, Y_test, parameters, model, use_embedding)
-    acc_per_fold[i] = accuracy
+    acc_per_fold[i] = accuracy.copy()
     
     print(acc_per_tag(confusion_matrix) , i+1)
 
@@ -202,8 +203,8 @@ def compute_overall_acc():
             tp += acc_per_fold[fold][tag]['TP']
             fp += acc_per_fold[fold][tag]['FP']
             fn += acc_per_fold[fold][tag]['FN']
-        presion = round(tp/(tp+fp),2)
-        recall = round(tp/(tp+fn),2)
+        presion = tp/(tp+fp)
+        recall = tp/(tp+fn)
         precision_lis.append(presion)
         recall_lis.append(recall)
 
@@ -213,11 +214,11 @@ def compute_overall_acc():
     print("Overall precision is" , presion)
     print("Overall recall is" , recall)
 
-    F1 = round((2*presion*recall)/(presion+recall),2)
+    F1 = (2*presion*recall)/(presion+recall)
     print("F1 score is" , F1)
-    F2 = round((5*presion*recall)/(4*presion+recall),2)
+    F2 = (5*presion*recall)/(4*presion+recall)
     print("F2 score is" , F2)
-    F_05 = round((1.25*presion*recall)/(0.25*presion+recall),2)
+    F_05 = (1.25*presion*recall)/(0.25*presion+recall)
     print("F 0.5 score is" , F_05)
 
 def main():
