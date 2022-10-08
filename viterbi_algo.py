@@ -10,7 +10,6 @@ from gensim.models import Word2Vec
 import gensim
 from numpy.linalg import norm
 from gensim import matutils
-import faiss
 
 # storing all the POS tags, words
 class TreeNode:
