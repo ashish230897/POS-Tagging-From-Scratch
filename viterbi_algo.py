@@ -23,27 +23,10 @@ class TreeNode:
 
 class Viterbi:
     
-    def unknown(self, word, vocab, model, vectors, words):
+    def unknown(self, word, model):
         try:
-            index = faiss.IndexFlatIP(100)
-            index.add(vectors)
-            query = np.expand_dims(model[word], axis=0)
-
-            _, I = index.search(query, 1)
-            sim_index = I[0][0]
-            sim = words[sim_index]
-            print("found substitute for {} is {}".format(word,sim))
+            sim = model.wv.most_similar(positive=[word])[0][0]
             return sim
-
-            """vector = model[word]
-            max_cosine = 0
-            for i in vocab.keys():
-                vec_i = model[i]
-                cosine = np.dot(vector,vec_i)/(norm(vector)*norm(vec_i))
-                if(cosine > max_cosine):
-                    max_cosine = cosine
-                    sim_word = i
-            return sim_word"""
         except KeyError as e:
             # word not present in word2vec vocab
             return None
@@ -60,7 +43,7 @@ class Viterbi:
 
         return tags
 
-    def compute_states(self, sent, parameters, model, vectors, words, use_embedding, dict):
+    def compute_states(self, sent, parameters, model, use_embedding):
         sent = sent.strip()
         tokens = sent.split(' ')
 
@@ -85,13 +68,9 @@ class Viterbi:
                         emission = parameters["emission"][tag][token]
                     elif use_embedding:
                         if cnt:
-                            if token in dict: # indexing word if it is already seen
-                                new = dict[token]
-                            else: new = self.unknown(token, parameters["vocab"], model, vectors, words)
+                            new = self.unknown(token, model)
                         cnt = False
-                        if(new != None):
-                            emission = parameters["emission"][tag][new]
-                            dict[token] = new
+                        if(new != None): emission = parameters["emission"][tag][new]
                         else:
                             # apply laplace smoothening
                             emission = 1/(parameters["tags"][tag] + len(parameters["vocab"].keys()))
@@ -105,14 +84,9 @@ class Viterbi:
                         if token in parameters["vocab"]:
                             emission = parameters["emission"][tag][token]
                         elif use_embedding:
-                            if cnt:
-                                if token in dict: 
-                                    new = dict[token]
-                                else: new = self.unknown(token, parameters["vocab"], model, vectors, words)
+                            if cnt: new = self.unknown(token, model)
                             cnt = False
-                            if(new != None):
-                                emission = parameters["emission"][tag][new]
-                                dict[token] = new
+                            if(new != None): emission = parameters["emission"][tag][new]
                             else:
                                 # apply laplace smoothening
                                 emission = 1/(parameters["tags"][tag] + len(parameters["vocab"].keys()))

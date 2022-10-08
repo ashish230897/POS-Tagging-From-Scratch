@@ -3,3 +3,5 @@ __pycache__/
 big.embedding
 wordVector.pkl
 heatmap.png
+*.npy
+*.model

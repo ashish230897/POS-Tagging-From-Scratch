@@ -12,6 +12,7 @@ import seaborn as sns
 import argparse
 import time
 import pickle
+from gensim.models import FastText
 
 nltk.download('brown')
 nltk.download('universal_tagset')
@@ -53,7 +54,7 @@ def compute_per_tag_acc():
     print("Per tag recall is:", rec_per_tag)
 
 
-def acc(prediction,true_label,accuracy):
+def acc(prediction, true_label):
   
   for i in range(0,len(true_label)):
     confusion_matrix[true_label[i]][prediction[i]] += 1
@@ -81,6 +82,7 @@ def test_data(i):
     return (X_test,Y_test)
 
 def init_cnf_matrix(parameters):
+    confusion_matrix = {}
     for key_1 in parameters['tags'].keys():
         confusion_matrix[key_1] = {}
         for key_2 in parameters['tags'].keys():
@@ -95,31 +97,20 @@ def test_acc(X_test, Y_test, parameters, model, use_embedding):
     obj = Viterbi()
     size = len(X_test)
     
-    print("size is {}".format(size))
-
-    vectors = []
-    words = []
-
-    if use_embedding:
-        for key in parameters["vocab"].keys():
-            value = model[key]
-            vectors.append(value)
-            words.append(key)
-        vectors = np.array(vectors)
+    print("Fold size is {}".format(size))
 
     t1 = 0
-    dict = {}
-    for i in range(0,size):
+    for i in range(0,40):
         sent = " ".join(X_test[i].split())
         if(len(sent) > 0):
-            if i != 0 and i % 100 == 0:
-                #print("avg time taken is {}".format(t1/100))
+            if i != 0 and i % 1000 == 0:
+                print("avg time taken is {}".format(t1/1000))
                 t1 = 0
             t2 = time.time()
-            states = obj.compute_states(sent, parameters, model, vectors, words, use_embedding, dict)
+            states = obj.compute_states(sent, parameters, model, use_embedding)
             t1 += (time.time() - t2)
             # this function updates both accuracy and confusion_matrix dictionaries
-            acc(states,Y_test[i],accuracy)
+            acc(states,Y_test[i])
 
 def acc_per_tag(confusion_matrix):
     accuracy_per_tag = {}
@@ -129,6 +120,7 @@ def acc_per_tag(confusion_matrix):
     return (accuracy_per_tag)
 
 def init_acc(parameters):
+    accuracy = {}
     for key in parameters['tags']:
         accuracy[key] = {}
         accuracy[key]['TP'] = 0
@@ -140,7 +132,7 @@ def init_acc(parameters):
     accuracy['^']['FP'] = 0
     accuracy['^']['FN'] = 0
 
-def train_and_test(i, model, use_embedding):
+def train_and_test(i, use_embedding):
     train_sent = []
     train_words = []
     vocab = {}
@@ -154,9 +146,16 @@ def train_and_test(i, model, use_embedding):
                 if tup[0] in vocab: vocab[tup[0]] += 1
                 else: vocab[tup[0]] = 1
     
-    parameters = compute_param(train_words,train_sent, vocab)
+    parameters = compute_param(train_words, train_sent, vocab)
+
     parameters['vocab'] = vocab
-    
+
+    sentences = [[token[0] for token in sent] for sent in train_sent]
+    print("size of train data is {}".format(len(sentences)))
+    print("Training model on split {}".format(i))
+    # train fasttext model on train data here
+    model = FastText(sentences, min_count=1, epochs=10)
+
     # confusion matrix of tags
     init_cnf_matrix(parameters)
 
@@ -228,15 +227,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.Embedding == "True":
-        print("loading word embedding model")
-        f = open('wordVector.pkl', 'rb')
-        model = pickle.load(f)
-        f.close()
-    else: model = None
-
     for i in range(0,5):
-        train_and_test(i, model, args.Embedding == "True")
+        train_and_test(i, args.Embedding == "True")
 
     # save confusion matrix heatmap for last fold
     create_heatmap()

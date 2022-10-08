@@ -10,22 +10,14 @@ from compute_params import *
 from viterbi_algo import *
 import argparse
 import pickle
-from gensim.models import Word2Vec
-import gensim
+from gensim.models import FastText
 
 def test_data(input, parameters, model, use_embedding):
     obj = Viterbi()
     
     sent = " ".join(input.split())
 
-    vectors = []
-    words = []
-    for word in parameters["vocab"]:
-        vectors.append(model[word])
-        words.append(word)
-    vectors = np.array(vectors)
-
-    states = obj.compute_states(sent, parameters, model, vectors, words, use_embedding, {})
+    states = obj.compute_states(sent, parameters, model, use_embedding)
     print("States corresponding to input are: ", sent, states)
 
 def main():
@@ -41,8 +33,7 @@ def main():
     with open('parameters.pkl', 'rb') as f:
         parameters = pickle.load(f)
     
-    with open('wordVector.pkl', 'rb') as f:
-        model = pickle.load(f)
+    model = FastText.load("./big.embedding")
 
     if args.Input == None:
         print("Please provide input")
