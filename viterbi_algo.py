@@ -10,6 +10,7 @@ from gensim.models import Word2Vec
 import gensim
 from numpy.linalg import norm
 from gensim import matutils
+import faiss
 
 # storing all the POS tags, words
 class TreeNode:
@@ -22,17 +23,27 @@ class TreeNode:
 
 class Viterbi:
     
-    def unknown(self, word, vocab, model):
+    def unknown(self, word, vocab, model, vectors, words):
         try:
-            vector = model.wv[word]
+            index = faiss.IndexFlatIP(100)
+            index.add(vectors)
+            query = np.expand_dims(model[word], axis=0)
+
+            _, I = index.search(query, 1)
+            sim_index = I[0][0]
+            sim = words[sim_index]
+            print("found substitute for {} is {}".format(word,sim))
+            return sim
+
+            """vector = model[word]
             max_cosine = 0
             for i in vocab.keys():
-                vec_i = model.wv[i]
+                vec_i = model[i]
                 cosine = np.dot(vector,vec_i)/(norm(vector)*norm(vec_i))
                 if(cosine > max_cosine):
                     max_cosine = cosine
                     sim_word = i
-            return sim_word
+            return sim_word"""
         except KeyError as e:
             # word not present in word2vec vocab
             return None
@@ -49,7 +60,7 @@ class Viterbi:
 
         return tags
 
-    def compute_states(self, sent, parameters, model, use_embedding):
+    def compute_states(self, sent, parameters, model, vectors, words, use_embedding, dict):
         sent = sent.strip()
         tokens = sent.split(' ')
 
@@ -73,14 +84,18 @@ class Viterbi:
                     if token in parameters["vocab"]:
                         emission = parameters["emission"][tag][token]
                     elif use_embedding:
-                        #if cnt: print("Using word embedding method for Unknown word: {}".format(token))
-                        if cnt: new = self.unknown(token, parameters["vocab"], model)
+                        if cnt:
+                            if token in dict: # indexing word if it is already seen
+                                new = dict[token]
+                            else: new = self.unknown(token, parameters["vocab"], model, vectors, words)
                         cnt = False
                         if(new != None):
                             emission = parameters["emission"][tag][new]
+                            dict[token] = new
                         else:
-                            emission = 0.001
-                    else: emission = 0.001
+                            # apply laplace smoothening
+                            emission = 1/(parameters["tags"][tag] + len(parameters["vocab"].keys()))
+                    else: emission = 1/(parameters["tags"][tag] + len(parameters["vocab"].keys()))
                     transition = parameters["transition"][tag]["."]
                     new_prob = tag_node.prob*emission*transition
                     child = TreeNode(".", new_prob, tag_node)
@@ -90,14 +105,18 @@ class Viterbi:
                         if token in parameters["vocab"]:
                             emission = parameters["emission"][tag][token]
                         elif use_embedding:
-                            #if cnt: print("Using word embedding method for Unknown word: {}".format(token))
-                            if cnt: new = self.unknown(token, parameters["vocab"], model)
+                            if cnt:
+                                if token in dict: 
+                                    new = dict[token]
+                                else: new = self.unknown(token, parameters["vocab"], model, vectors, words)
                             cnt = False
                             if(new != None):
                                 emission = parameters["emission"][tag][new]
+                                dict[token] = new
                             else:
-                                emission = 0.001
-                        else: emission = 0.001
+                                # apply laplace smoothening
+                                emission = 1/(parameters["tags"][tag] + len(parameters["vocab"].keys()))
+                        else: emission = 1/(parameters["tags"][tag] + len(parameters["vocab"].keys()))
                         transition = parameters["transition"][tag][child_tag]
                         new_prob = tag_node.prob*emission*transition
                         child = TreeNode(child_tag, new_prob, tag_node)

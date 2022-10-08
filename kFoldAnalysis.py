@@ -10,6 +10,8 @@ from compute_params import *
 from viterbi_algo import *
 import seaborn as sns
 import argparse
+import time
+import pickle
 
 nltk.download('brown')
 nltk.download('universal_tagset')
@@ -93,10 +95,29 @@ def test_acc(X_test, Y_test, parameters, model, use_embedding):
     obj = Viterbi()
     size = len(X_test)
     
+    print("size is {}".format(size))
+
+    vectors = []
+    words = []
+
+    if use_embedding:
+        for key in parameters["vocab"].keys():
+            value = model[key]
+            vectors.append(value)
+            words.append(key)
+        vectors = np.array(vectors)
+
+    t1 = 0
+    dict = {}
     for i in range(0,size):
         sent = " ".join(X_test[i].split())
         if(len(sent) > 0):
-            states = obj.compute_states(sent, parameters, model, use_embedding)
+            if i != 0 and i % 100 == 0:
+                #print("avg time taken is {}".format(t1/100))
+                t1 = 0
+            t2 = time.time()
+            states = obj.compute_states(sent, parameters, model, vectors, words, use_embedding, dict)
+            t1 += (time.time() - t2)
             # this function updates both accuracy and confusion_matrix dictionaries
             acc(states,Y_test[i],accuracy)
 
@@ -209,7 +230,9 @@ def main():
 
     if args.Embedding == "True":
         print("loading word embedding model")
-        model = gensim.models.Word2Vec.load('big.embedding')
+        f = open('wordVector.pkl', 'rb')
+        model = pickle.load(f)
+        f.close()
     else: model = None
 
     for i in range(0,5):

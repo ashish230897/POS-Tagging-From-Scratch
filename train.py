@@ -60,7 +60,18 @@ def train_model():
     model = gensim.models.Word2Vec(big_vocab, min_count=1)
     model.save('big.embedding')
 
+    big = {}
+    for sent in big_vocab:
+        for token in sent:
+            if token not in big: big[token] = 1
+            else: continue
+
+    word_vec = {}
+    for word in big:
+        word_vec[word] = model.wv[word]
     
+    with open('wordVector.pkl', 'wb') as f:
+        pickle.dump(word_vec, f)
 
 def main():
     # train on entire data

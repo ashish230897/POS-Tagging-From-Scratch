@@ -17,7 +17,15 @@ def test_data(input, parameters, model, use_embedding):
     obj = Viterbi()
     
     sent = " ".join(input.split())
-    states = obj.compute_states(sent, parameters, model, use_embedding)
+
+    vectors = []
+    words = []
+    for word in parameters["vocab"]:
+        vectors.append(model[word])
+        words.append(word)
+    vectors = np.array(vectors)
+
+    states = obj.compute_states(sent, parameters, model, vectors, words, use_embedding, {})
     print("States corresponding to input are: ", sent, states)
 
 def main():
@@ -33,7 +41,8 @@ def main():
     with open('parameters.pkl', 'rb') as f:
         parameters = pickle.load(f)
     
-    model = gensim.models.Word2Vec.load('big.embedding')
+    with open('wordVector.pkl', 'rb') as f:
+        model = pickle.load(f)
 
     if args.Input == None:
         print("Please provide input")
