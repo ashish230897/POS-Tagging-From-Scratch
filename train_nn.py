@@ -24,16 +24,13 @@ warnings.simplefilter('ignore')
 
 from nn_train_utils import *
 
-def evaluate_model(parameters, tagged_sents, fold, word_model, tag_index):
+def evaluate_model(parameters, tagged_sents, fold, word_model, tag_index, acc_per_tag, confusion_matrix):
     net = Net(parameters)
-    net.load_state_dict(torch.load(parameters["OUT_DIR"] + "NN_POS_Tagging/best_checkpoint/nn_model.pt"))
+    net.load_state_dict(torch.load(parameters["OUT_DIR"] + "nn_model.pt"))
     print("Computing validation accuracy")
-    compute_accuracy(net, tagged_sents, fold, word_model, tag_index)
-    print("Computing train accuracy")
-    compute_accuracy(net, tagged_sents, fold, word_model, tag_index)
+    compute_accuracy(net, tagged_sents, fold, word_model, tag_index, acc_per_tag, confusion_matrix)
 
 def main():
-
     # making model deterministic
     seed = 3
     random.seed(seed)
@@ -46,13 +43,23 @@ def main():
     brown_sents = brown.sents() # list of list of tokens
     
     word_model = api.load("word2vec-google-news-300")
-
-    # train word2vec model
-    #word_model = Word2Vec(brown_sents, min_count=1, vector_size=300, epochs=20)
-    #word_model.save('new.embedding')
-    #word_model = Word2Vec.load("./new.embedding")
+    confusion_matrix = {}
+    acc_per_tag = {}
 
     UNIVERSAL_TAGS = ["VERB","NOUN","PRON","ADJ","ADV","ADP","CONJ","DET","NUM","PRT","X","."]
+
+    for tag in UNIVERSAL_TAGS:
+        confusion_matrix[tag] = {}
+        for pos in UNIVERSAL_TAGS:
+            confusion_matrix[tag][pos] = 0
+
+    for fold in range(1,2):
+        acc_per_tag[fold] = {}
+        for tag in UNIVERSAL_TAGS:
+            acc_per_tag[fold][tag] = {}
+            acc_per_tag[fold][tag]['TP'] = 0
+            acc_per_tag[fold][tag]['FP'] = 0
+            acc_per_tag[fold][tag]['FN'] = 0
     
     count = 0
     tag_index = {}
@@ -78,12 +85,17 @@ def main():
         "learning_rate": 1e-6,
         "OUT_DIR": "./",
     }
+    split_arr = np.array_split(tagged_sents, 5)
 
-    # iterate over the sentences and train the model on the fly
-    #model = train_sents(train_parameters, tagged_sents, word_model, 0, tag_index, index_tag)
-
-    # load pre-trained model and pass it for computing accuracy on validation set
-    #evaluate_model(train_parameters, tagged_sents, 0, word_model, tag_index)
+    for fold in range(1,2):
+        sents = []
+        for i in range(5):
+            if i == fold: continue
+            sents += list(split_arr[i])
+        
+        model = train_sents(train_parameters, sents, word_model, fold, tag_index, index_tag)
+        # load pre-trained model and pass it for computing accuracy on validation set
+        evaluate_model(train_parameters, list(split_arr[fold]), fold, word_model, tag_index, acc_per_tag, confusion_matrix)
 
     gc.collect()
 

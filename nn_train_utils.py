@@ -50,20 +50,20 @@ def max_(out):
     return index
     
 
-def compute_accuracy(model, tagged_sents, fold, word_model, tag_index):
-
-    split_data = np.array_split(tagged_sents, 5)
-    valid_data = list(split_data[fold])
-
+def compute_accuracy(model, tagged_sents, fold, word_model, tag_index, acc_per_tag, confusion_matrix):
+    valid_data = tagged_sents
+    UNIVERSAL_TAGS = ["VERB","NOUN","PRON","ADJ","ADV","ADP","CONJ","DET","NUM","PRT","X","."]
 
     cuda =  torch.cuda.is_available()
     device = torch.device("cuda") if cuda else torch.device("cpu")
+    model.to(device)
 
     accuracies = []
     model.eval()
 
     for eval_sent in valid_data:
         Y, X = input_fun(eval_sent, word_model)
+        if len(X) < 1: continue
         X_tensor = torch.FloatTensor(X)
         X_tensor = X_tensor.to(device)
 
@@ -77,8 +77,16 @@ def compute_accuracy(model, tagged_sents, fold, word_model, tag_index):
         for i,output in enumerate(outputs):
             index = max_(output)
             actual = Y_tensor[i].item()
-            if index == actual: accuracies.append(1)
-            else: accuracies.append(0)
+            index_pos = UNIVERSAL_TAGS[index]
+            actual_pos = UNIVERSAL_TAGS[actual]
+            confusion_matrix[actual_pos][index_pos] += 1
+            if index == actual:
+                acc_per_tag[fold][index_pos]['TP'] += 1
+                accuracies.append(1)
+            else:
+                acc_per_tag[fold][index_pos]['FP'] += 1
+                acc_per_tag[fold][actual_pos]['FN'] += 1
+                accuracies.append(0)
 
     accuracy = sum(accuracies)/len(accuracies)
     print("Validation data accuracy is {}".format(accuracy))
@@ -99,27 +107,17 @@ def input_fun(sentence, word_model):
         vector_prev = []
         vector_prevv = []
         
-        try:
-            vector_curr = word_model.wv[X_sentence[i]]
-        except:
-            sim = word_model.wv.most_similar(positive=[X_sentence[i]])[0][0]
-            vector_curr = word_model.wv[sim]
+        if X_sentence[i] in word_model:
+            vector_curr = list(word_model[X_sentence[i]])
+        else: continue
         
-        if i != 0:
-            try:
-                vector_prev = word_model.wv[X_sentence[i-1]]
-            except:
-                sim = word_model.wv.most_similar(positive=[X_sentence[i-1]])[0][0]
-                vector_prev = word_model.wv[sim]
+        if i != 0 and X_sentence[i-1] in word_model:
+            vector_prev = list(word_model[X_sentence[i-1]])
         else:
             vector_prev = np.zeros(300)
         
-        if i != 0 and i != 1:
-            try:
-                vector_prevv = word_model.wv[X_sentence[i-2]]
-            except:
-                sim = word_model.wv.most_similar(positive=[X_sentence[i-2]])[0][0]
-                vector_prevv = word_model.wv[sim]
+        if i != 0 and i != 1 and X_sentence[i-2] in word_model:
+            vector_prevv = list(word_model[X_sentence[i-2]])
         else:
             vector_prevv = np.zeros(300)
         
@@ -142,6 +140,7 @@ def evaluate(model, criterion, valid_data, word_model, tag_index, device):
     for eval_sent in valid_data:
         if batches == 1000: break
         Y, X = input_fun(eval_sent, word_model)
+        if len(X) < 1: continue
         X_tensor = torch.FloatTensor(X)
         X_tensor = X_tensor.to(device)
 
@@ -184,7 +183,7 @@ def train_sents(parameters, tagged_sents, word_model, fold, tag_index, index_tag
 
     steps = 0
     last_loss = 1000
-    checkpoint_path = parameters["OUT_DIR"] + "NN_POS_Tagging/best_checkpoint/"
+    checkpoint_path = parameters["OUT_DIR"]
     print("Total steps are {}".format(len(train_data)*parameters["num_epochs"]))
 
     for epochs in range(parameters["num_epochs"]):
@@ -192,6 +191,7 @@ def train_sents(parameters, tagged_sents, word_model, fold, tag_index, index_tag
             # pass this tagged sentence for training
             net.train()
             Y, X = input_fun(sent, word_model)
+            if len(X) < 1: continue
             X_tensor = torch.FloatTensor(X)
             X_tensor = X_tensor.to(device)
             Y = [tag_index[y] for y in Y]
@@ -215,5 +215,11 @@ def train_sents(parameters, tagged_sents, word_model, fold, tag_index, index_tag
                     # save model weights
                     torch.save(net.state_dict(), checkpoint_path + "nn_model.pt")
                     torch.save(optimizer.state_dict(), os.path.join(checkpoint_path, "optimizer.pt"))
+    
+    loss = evaluate(net, criterion, valid_data, word_model, tag_index, device)
+    if last_loss > loss:
+        # save model weights
+        torch.save(net.state_dict(), checkpoint_path + "nn_model.pt")
+        torch.save(optimizer.state_dict(), os.path.join(checkpoint_path, "optimizer.pt"))
 
     return net
