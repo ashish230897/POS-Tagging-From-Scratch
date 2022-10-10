@@ -1,7 +1,8 @@
 .ipynb_checkpoints/
 __pycache__/
-big.embedding
 wordVector.pkl
 heatmap.png
 *.npy
 *.model
+*.embedding
+./NN_POS_Tagging/best_checkpoint/
