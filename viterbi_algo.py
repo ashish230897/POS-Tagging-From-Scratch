@@ -25,6 +25,7 @@ class Viterbi:
     def unknown(self, word, model):
         try:
             sim = model.wv.most_similar(positive=[word])[0][0]
+            print(sim , word)
             return sim
         except KeyError as e:
             # word not present in word2vec vocab
