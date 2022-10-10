@@ -45,8 +45,8 @@ def main():
     brown_sents = brown.sents() # list of list of tokens
 
     # train word2vec model
-    word_model = Word2Vec(brown_sents, min_count=1, vector_size=300, epochs=20)
-    word_model.save('new.embedding')
+    #word_model = Word2Vec(brown_sents, min_count=1, vector_size=300, epochs=20)
+    #word_model.save('new.embedding')
     word_model = Word2Vec.load("./new.embedding")
 
     UNIVERSAL_TAGS = ["VERB","NOUN","PRON","ADJ","ADV","ADP","CONJ","DET","NUM","PRT","X","."]
@@ -66,26 +66,21 @@ def main():
     print(index_tag)
 
     train_parameters = {
-        "input_size": 240,
-        "hidden_size1": 700,
+        "input_size": 900,
+        "hidden_size1": 1200,
         "hidden_size2": 300,
         "num_classes": 12,
-        "num_epochs": 15,
+        "num_epochs": 10,
         "batch_size": 50,
         "learning_rate": 1e-6,
         "OUT_DIR": "./",
     }
 
     # iterate over the sentences and train the model on the fly
-    # for epochs in range(train_parameters["num_epochs"]):
-    #     for sent in tagged_sents:
-    #         # pass this tagged sentence for training
-
-    train_dataloader, val_dataloader = prepare_fold_data(0, tagged_sents, tag_index, index_tag, word_model, train_parameters)
-    model = train_model(train_dataloader, val_dataloader, train_parameters)
+    model = train_sents(train_parameters, tagged_sents, word_model, 0, tag_index, index_tag)
 
     # load pre-trained model and pass it for computing accuracy on validation set
-    evaluate_model(train_parameters, train_dataloader, val_dataloader)
+    #evaluate_model(train_parameters, train_dataloader, val_dataloader)
 
     gc.collect()
 

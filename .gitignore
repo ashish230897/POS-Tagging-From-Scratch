@@ -5,4 +5,5 @@ heatmap.png
 *.npy
 *.model
 *.embedding
-./NN_POS_Tagging/best_checkpoint/
+./NN_POS_Tagging/best_checkpoint/nn_model.pt
+./NN_POS_Tagging/best_checkpoint/optimizer.pt
