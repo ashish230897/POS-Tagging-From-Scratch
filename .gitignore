@@ -1,6 +1,6 @@
 .ipynb_checkpoints/
 __pycache__/
-wordVector.pkl
+*.pkl
 heatmap.png
 *.npy
 *.model
