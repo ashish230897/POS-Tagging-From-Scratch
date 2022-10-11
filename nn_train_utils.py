@@ -12,6 +12,8 @@ from datasets import Dataset
 from torch.utils.data import DataLoader
 import os
 import random
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 class Net(nn.Module):
     def __init__(self, parameters):
@@ -213,7 +215,7 @@ def train_sents(parameters, tagged_sents, word_model, fold, tag_index, index_tag
                 if last_loss > loss:
                     last_loss = loss
                     # save model weights
-                    torch.save(net.state_dict(), checkpoint_path + "nn_model.pt")
+                    torch.save(net.state_dict(), checkpoint_path + "nn_model{}.pt".format(fold))
                     torch.save(optimizer.state_dict(), os.path.join(checkpoint_path, "optimizer.pt"))
     
     loss = evaluate(net, criterion, valid_data, word_model, tag_index, device)
@@ -223,3 +225,23 @@ def train_sents(parameters, tagged_sents, word_model, fold, tag_index, index_tag
         torch.save(optimizer.state_dict(), os.path.join(checkpoint_path, "optimizer.pt"))
 
     return net
+
+
+def create_heatmap(acc_per_tag, confusion_matrix, fold):
+    arr = []
+    keys = list(confusion_matrix.keys())
+    #keys.remove("^")
+    for key in keys:
+        if key == "^": continue
+        lis = []
+        dict_ = confusion_matrix[key]
+        for key_ in keys:
+            if key_ == "^": continue
+            lis.append(confusion_matrix[key][key_])
+        arr.append(lis)
+    arr = np.array(arr)
+
+    fig, ax = plt.subplots(figsize=(15,15))         # Sample figsize in inches
+    plot = sns.heatmap(arr, annot=True, linewidths=.5, ax=ax, xticklabels=keys, yticklabels=keys, fmt='g')
+    fig = plot.get_figure()
+    fig.savefig("./heatmap{}.png".format(fold))

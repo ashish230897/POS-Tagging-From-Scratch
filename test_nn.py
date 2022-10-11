@@ -8,6 +8,7 @@ import gensim
 import gc
 import os
 import random
+import argparse
 import torch
 nltk.download('brown')
 nltk.download('universal_tagset')
@@ -28,7 +29,7 @@ def inference(sent, word_model, parameters, index_tag, tag_index):
     net.to(device)
     
     checkpoint_path = parameters["OUT_DIR"]
-    net.load_state_dict(torch.load(checkpoint_path + "nn_model.pt", map_location=torch.device('cpu')))
+    net.load_state_dict(torch.load(checkpoint_path + "nn_model0.pt", map_location=torch.device('cpu')))
     net.eval()
     
     X_sentence = []
@@ -91,7 +92,18 @@ def inference(sent, word_model, parameters, index_tag, tag_index):
 
 
 def main():
-    sent = "Sameer is a good boy"
+    # collect the input sentence
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-i", "--Input", help = "Provide Input")
+
+    args = parser.parse_args()
+
+    sent = args.Input
+    if args.Input == None: 
+        print("Please provide input")
+        exit()
+    print("Given sentence is: {}".format(sent))
 
     seed = 3
     random.seed(seed)

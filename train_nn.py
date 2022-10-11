@@ -26,7 +26,7 @@ from nn_train_utils import *
 
 def evaluate_model(parameters, tagged_sents, fold, word_model, tag_index, acc_per_tag, confusion_matrix):
     net = Net(parameters)
-    net.load_state_dict(torch.load(parameters["OUT_DIR"] + "nn_model.pt"))
+    net.load_state_dict(torch.load(parameters["OUT_DIR"] + "nn_model{}.pt".format(fold), map_location=torch.device('cpu')))
     print("Computing validation accuracy")
     compute_accuracy(net, tagged_sents, fold, word_model, tag_index, acc_per_tag, confusion_matrix)
 
@@ -53,7 +53,7 @@ def main():
         for pos in UNIVERSAL_TAGS:
             confusion_matrix[tag][pos] = 0
 
-    for fold in range(1,2):
+    for fold in range(0,1):
         acc_per_tag[fold] = {}
         for tag in UNIVERSAL_TAGS:
             acc_per_tag[fold][tag] = {}
@@ -87,7 +87,7 @@ def main():
     }
     split_arr = np.array_split(tagged_sents, 5)
 
-    for fold in range(1,2):
+    for fold in range(0,1):
         sents = []
         for i in range(5):
             if i == fold: continue
@@ -96,6 +96,12 @@ def main():
         model = train_sents(train_parameters, sents, word_model, fold, tag_index, index_tag)
         # load pre-trained model and pass it for computing accuracy on validation set
         evaluate_model(train_parameters, list(split_arr[fold]), fold, word_model, tag_index, acc_per_tag, confusion_matrix)
+
+    print("confusion matrix is {}".format(confusion_matrix))
+    print("Accuracy per tag is {}".format(acc_per_tag))
+
+    # save confusion matrix heatmap for last fold
+    create_heatmap(acc_per_tag, confusion_matrix, fold)
 
     gc.collect()
 
